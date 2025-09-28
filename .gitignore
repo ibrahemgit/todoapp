@@ -91,12 +91,12 @@ linux/flutter/generated_plugin_registrant.cc
 linux/flutter/generated_plugin_registrant.h
 
 # استبعاد ملفات الاختبار والتقارير
-test/
-reports/
+# test/  # تم تعطيله - ملفات الاختبار مهمة
+# reports/  # تم تعطيله - التقارير مهمة
 coverage/
 
 # استبعاد ملفات المؤقتة
-temp_file.dart
+# temp_file.dart  # تم تعطيله - قد يكون مهم
 *.tmp
 *.temp
 
