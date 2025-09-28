@@ -1,0 +1,105 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# ===== إضافات للحد من حجم المشروع =====
+
+# استبعاد مجلد build بالكامل (يحتوي على ملفات مبنية)
+build/
+
+# استبعاد ملفات APK والأرشيفات
+*.apk
+*.aab
+*.ipa
+*.dmg
+*.zip
+*.tar.gz
+
+# استبعاد ملفات النظام المحلية
+local.properties
+*.iml
+.gradle/
+gradle-wrapper.jar
+
+# استبعاد ملفات iOS المبنية
+ios/Flutter/ephemeral/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+
+# استبعاد ملفات Android المبنية
+android/.gradle/
+android/app/build/
+android/build/
+android/gradle/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+
+# استبعاد ملفات macOS المبنية
+macos/Flutter/ephemeral/
+macos/Flutter/GeneratedPluginRegistrant.swift
+
+# استبعاد ملفات Windows المبنية
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
+
+# استبعاد ملفات Linux المبنية
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
+
+# استبعاد ملفات الاختبار والتقارير
+test/
+reports/
+coverage/
+
+# استبعاد ملفات المؤقتة
+temp_file.dart
+*.tmp
+*.temp
+
+# استبعاد ملفات السجلات
+*.log
+flutter_*.log
