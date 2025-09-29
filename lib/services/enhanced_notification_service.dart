@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -37,6 +38,9 @@ class EnhancedNotificationService {
   // Cache للإشعارات المعلقة لتحسين الأداء
   final Map<String, NotificationAppLaunchDetails> _notificationCache = {};
   bool _cacheInitialized = false;
+  
+  // منع الضغط المتكرر على أزرار الإشعارات
+  final Set<String> _processingTasks = {};
 
   // إعدادات التأجيل
   static const List<Duration> _snoozeOptions = [
@@ -125,22 +129,37 @@ class EnhancedNotificationService {
   /// معالجة سريعة لأزرار الإشعار
   Future<void> handleNotificationActionFast(String payload, String actionId) async {
     try {
+      // منع الضغط المتكرر
+      if (_processingTasks.contains(payload)) {
+        print('⚠️ المهمة قيد المعالجة بالفعل: $payload');
+        return;
+      }
+      
+      _processingTasks.add(payload);
+      
       print('⚡ معالجة سريعة لإجراء الإشعار: $actionId للمهمة: $payload');
+      
+      // إغلاق الإشعار فوراً قبل المعالجة
+      await _dismissNotificationFast(payload);
       
       // معالجة فورية بدون انتظار
       if (actionId == 'complete_task') {
         await _completeTaskFast(payload);
+        await _showConfirmationNotification('تم إتمام المهمة', 'تم إتمام المهمة بنجاح');
       } else if (actionId == 'snooze_task') {
         await _snoozeTaskFast(payload);
+        await _showConfirmationNotification('تم تأجيل المهمة', 'تم تأجيل المهمة بنجاح');
       } else if (actionId == 'tap_task') {
         await _openTaskFast(payload);
       }
       
-      // إغلاق الإشعار فوراً
-      await _dismissNotificationFast(payload);
+      // إزالة المهمة من قائمة المعالجة
+      _processingTasks.remove(payload);
       
     } catch (e) {
       print('❌ خطأ في المعالجة السريعة: $e');
+      // إزالة المهمة من قائمة المعالجة في حالة الخطأ
+      _processingTasks.remove(payload);
     }
   }
 
@@ -207,17 +226,48 @@ class EnhancedNotificationService {
   /// إغلاق الإشعار بسرعة
   Future<void> _dismissNotificationFast(String payload) async {
     try {
+      final notificationId = _getNotificationId(payload);
+      
+      // إغلاق فوري بطرق متعددة
+      await Future.wait([
+        // طريقة 1: إغلاق باستخدام معرف المهمة
+        _notifications.cancel(notificationId),
+        
+        // طريقة 2: إغلاق باستخدام الـ tag
+        _notifications.cancel(notificationId, tag: 'persistent_task_$payload'),
+        
+        // طريقة 3: إغلاق جميع الإشعارات مع نفس الـ tag
+        _notifications.cancel(0, tag: 'persistent_task_$payload'),
+        
+        // طريقة 4: إغلاق باستخدام معرفات مختلفة
+        _notifications.cancel(notificationId + 1000),
+        _notifications.cancel(notificationId + 2000),
+        _notifications.cancel(notificationId + 3000),
+      ]);
+      
+      // إغلاق من SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final notificationIds = prefs.getStringList('notification_ids_$payload') ?? [];
       
-      for (String id in notificationIds) {
-        await _notifications.cancel(int.parse(id));
+      if (notificationIds.isNotEmpty) {
+        await Future.wait(
+          notificationIds.map((id) => _notifications.cancel(int.parse(id)))
+        );
+        await prefs.remove('notification_ids_$payload');
       }
       
-      await prefs.remove('notification_ids_$payload');
+      // إغلاق جميع الإشعارات كحل أخير
+      await _notifications.cancelAll();
+      
       print('🗑️ تم إغلاق الإشعار بسرعة: $payload');
     } catch (e) {
       print('❌ خطأ في إغلاق الإشعار السريع: $e');
+      // محاولة إغلاق جميع الإشعارات كحل أخير
+      try {
+        await _notifications.cancelAll();
+      } catch (e2) {
+        print('❌ فشل حتى إغلاق جميع الإشعارات: $e2');
+      }
     }
   }
 
@@ -617,11 +667,12 @@ class EnhancedNotificationService {
       final AndroidNotificationChannel confirmationChannel = AndroidNotificationChannel(
         'confirmation_channel',
         'تأكيدات الإجراءات',
-        description: 'إشعارات تأكيد الإجراءات داخل التطبيق',
-        importance: Importance.low,
-        enableVibration: false,
+        description: 'إشعارات تأكيد الإجراءات',
+        importance: Importance.high, // أهمية عالية
+        enableVibration: true, // تفعيل الاهتزاز
         enableLights: true,
-        playSound: false,
+        playSound: true, // تفعيل الصوت
+        showBadge: true,
       );
 
       final androidImplementation = _notifications
@@ -1402,6 +1453,69 @@ class EnhancedNotificationService {
     final hash = taskId.hashCode;
     // إضافة رقم ثابت لضمان عدم التداخل مع إشعارات أخرى
     return (hash.abs() % 100000) + 1000; // معرف بين 1000 و 101000
+  }
+
+  /// إظهار إشعار تأكيد بسيط ومؤقت
+  Future<void> _showConfirmationNotification(String title, String message) async {
+    try {
+      print('✅ إظهار إشعار تأكيد: $title');
+      
+      // معرف فريد للإشعار
+      final notificationId = DateTime.now().millisecondsSinceEpoch % 100000;
+      
+      await _notifications.show(
+        notificationId,
+        title,
+        message,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'confirmation_channel',
+            'تأكيدات الإجراءات',
+            channelDescription: 'إشعارات تأكيد الإجراءات',
+            importance: Importance.high, // أهمية عالية لضمان الظهور
+            priority: Priority.high, // أولوية عالية
+            autoCancel: true,
+            enableVibration: true, // تفعيل الاهتزاز
+            playSound: true, // تفعيل الصوت
+            color: const Color(0xFF4CAF50), // لون أخضر للتأكيد
+            ledColor: const Color(0xFF4CAF50),
+            ledOnMs: 1000,
+            ledOffMs: 500,
+            timeoutAfter: 5000, // يختفي بعد 5 ثوان
+            fullScreenIntent: false, // لا يظهر على الشاشة الكاملة
+            ongoing: false, // ليس مستمر
+            showWhen: true,
+            when: DateTime.now().millisecondsSinceEpoch,
+            styleInformation: const BigTextStyleInformation(
+              '',
+              htmlFormatBigText: true,
+              contentTitle: '',
+              htmlFormatContentTitle: true,
+              summaryText: 'تم تنفيذ الإجراء بنجاح',
+              htmlFormatSummaryText: true,
+            ),
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+      );
+      
+      // إغلاق الإشعار تلقائياً بعد 5 ثوان
+      Timer(const Duration(seconds: 5), () async {
+        try {
+          await _notifications.cancel(notificationId);
+        } catch (e) {
+          print('❌ خطأ في إغلاق إشعار التأكيد: $e');
+        }
+      });
+      
+      print('✅ تم إرسال إشعار التأكيد');
+    } catch (e) {
+      print('❌ خطأ في إرسال إشعار التأكيد: $e');
+    }
   }
 
   /// إظهار إشعار تأكيد إتمام المهمة داخل التطبيق

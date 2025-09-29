@@ -69,6 +69,23 @@
             android:exported="false" 
             android:name="com.dexterous.flutterlocalnotifications.ForegroundService"
             android:foregroundServiceType="mediaProjection|specialUse" />
+            
+        <!-- Background Service for persistent notifications -->
+        <service
+            android:name=".BackgroundNotificationService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
+            
+        <!-- Notification Action Receiver -->
+        <receiver
+            android:name=".NotificationActionReceiver"
+            android:exported="false"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="com.todoapp.smart.todoapp.NOTIFICATION_ACTION" />
+            </intent-filter>
+        </receiver>
     </application>
     
     <queries>

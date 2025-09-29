@@ -8,6 +8,7 @@ import 'constants/app_localizations.dart';
 import 'services/hive_service.dart';
 import 'services/enhanced_notification_service.dart';
 import 'services/notification_log_service.dart';
+import 'services/background_service.dart';
 import 'providers/app_settings_provider.dart';
 import 'providers/todo_provider.dart';
 
@@ -75,10 +76,14 @@ class _MyAppState extends ConsumerState<MyApp> {
       // تهيئة خدمة الإشعارات
       await enhancedService.initializeNotifications();
       
+      // بدء الخدمة الخلفية
+      final backgroundService = BackgroundService();
+      await backgroundService.startBackgroundService();
+      
       // ملاحظة: معالجة المهام المحفوظة تتم الآن في SplashScreen
       // لتحسين الأداء وتجنب التكرار
       
-      print('✅ تم تهيئة خدمة الإشعارات المحسنة بنجاح مع طلب الإذونات');
+      print('✅ تم تهيئة خدمة الإشعارات المحسنة والخدمة الخلفية بنجاح');
       
     } catch (e) {
       print('❌ خطأ في تهيئة خدمة الإشعارات المحسنة: $e');

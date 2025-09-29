@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/todo_model.dart';
 import '../services/hive_service.dart';
 import '../services/enhanced_notification_service.dart';
@@ -187,9 +188,49 @@ class TodoListNotifier extends StateNotifier<List<TodoModel>> {
     try {
       final todos = HiveService.getAllTodos();
       state = todos;
+      
+      // معالجة المهام من الخدمة الخلفية بعد تحميل المهام
+      await _processBackgroundTasks();
     } catch (e) {
       // Handle error
       state = [];
+    }
+  }
+
+  /// معالجة المهام من الخدمة الخلفية
+  Future<void> _processBackgroundTasks() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // معالجة المهام المكتملة من الخدمة الخلفية
+      final completedTasks = prefs.getStringList('completed_from_background') ?? [];
+      if (completedTasks.isNotEmpty) {
+        for (String taskId in completedTasks) {
+          // البحث عن المهمة وتحديث حالتها
+          final taskIndex = state.indexWhere((todo) => todo.id == taskId);
+          if (taskIndex != -1) {
+            final task = state[taskIndex];
+            final updatedTask = task.copyWith(
+              status: TodoStatus.completed,
+              completedAt: DateTime.now(),
+            );
+            
+            // تحديث المهمة في Hive
+            await HiveService.updateTodo(updatedTask);
+            
+            // تحديث الـ state
+            state = state.map((t) => t.id == taskId ? updatedTask : t).toList();
+            
+            print('✅ تم إتمام المهمة من الخدمة الخلفية: ${task.title}');
+          }
+        }
+        
+        // مسح المهام المكتملة من SharedPreferences
+        await prefs.remove('completed_from_background');
+      }
+      
+    } catch (e) {
+      print('❌ خطأ في معالجة المهام من الخدمة الخلفية: $e');
     }
   }
 

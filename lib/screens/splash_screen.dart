@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../utils/app_router.dart';
 import '../constants/app_constants.dart';
 import '../services/enhanced_notification_service.dart';
+import '../services/background_service.dart';
 import '../providers/todo_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -120,6 +121,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       // معالجة المهام المحفوظة من الإشعارات السابقة
       await _processPendingTasks();
       
+      // معالجة المهام من الخدمة الخلفية
+      final backgroundService = BackgroundService();
+      await backgroundService.processBackgroundTasks();
+      
     } catch (e) {
       print('❌ خطأ في معالجة الإشعارات المعلقة: $e');
     }
@@ -130,9 +135,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     try {
       // استخدام الدوال المحسنة من خدمة الإشعارات
       final enhancedService = EnhancedNotificationService();
+      
+      // تعيين ProviderContainer للخدمة
+      final container = ProviderScope.containerOf(context);
+      enhancedService.setProviderContainer(container);
+      
       await enhancedService.handleNotificationActionFast(payload, actionId);
       
       print('⚡ تم معالجة إجراء الإشعار بسرعة: $actionId للمهمة: $payload');
+      
+      // عدم فتح التطبيق - فقط معالجة الإجراء في الخلفية
+      // إذا كان المستخدم يريد فتح التطبيق، يمكنه النقر على أيقونة التطبيق
+      
     } catch (e) {
       print('❌ خطأ في معالجة إجراء الإشعار: $e');
       
